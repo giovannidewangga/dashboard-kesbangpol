@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Agenda Kesbangpol 2026 - Kota Semarang</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
@@ -44,24 +45,14 @@
 
     <div class="max-w-7xl mx-auto px-6 py-10">
         
-        <div class="bg-gray-100 shadow-inner rounded-t-xl overflow-hidden mb-0 no-print flex border-x border-t border-gray-200">
-            <script>
-                const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-                months.forEach(m => {
-                    document.write(`
-                        <button onclick="filterByMonth('${m}', this)" class="month-tab flex-1 py-4 text-[11px] font-bold uppercase hover:bg-white transition-all text-gray-500 border-r border-gray-200 last:border-0">
-                            ${m.substring(0, 3)}
-                        </button>
-                    `);
-                });
-            </script>
-        </div>
+        <div class="bg-gray-100 shadow-inner rounded-t-xl overflow-hidden mb-0 no-print flex border-x border-t border-gray-200" id="month-tabs">
+            </div>
 
         <main class="bg-white shadow-2xl rounded-b-xl border border-gray-200 overflow-hidden min-h-[600px]">
             <div id="welcome-msg" class="p-24 text-center">
                 <div class="text-6xl mb-6 opacity-10 font-black tracking-tighter">BAKESBANGPOL</div>
                 <h2 class="text-xl font-bold text-gray-600 uppercase tracking-[0.2em]">Monitoring Agenda Kerja</h2>
-                <p class="text-gray-400 mt-3 text-sm">Pilih periode bulan pada bilah di atas untuk melihat rincian.</p>
+                <p class="text-gray-400 mt-3 text-sm">Sedang memuat data dari Google Sheets...</p>
             </div>
 
             <div id="content-display" class="hidden">
@@ -81,7 +72,16 @@
         </main>
     </div>
 
+    <footer class="bg-gray-100 border-t border-gray-200 py-10 mt-12 text-center text-gray-500 text-xs no-print">
+        <p>&copy; 2026 Bakesbangpol Kota Semarang. Portal Internal Dashboard.</p>
+    </footer>
+
     <script>
+        // Link CSV dari Google Sheets Anda
+        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbbOrCBNjyPcOQ4QIPZ04j2tghYDUecwpNmyQyrAZmBNRJ-O18vfWKcvDd2yCn-Q/pub?output=csv";
+        
+        let database = [];
+
         const colorMap = {
             "Indeks Demokrasi": { border: "#2563eb", bg: "#eff6ff", text: "#1e40af" },
             "Indeks Aktualisasi Pancasila": { border: "#dc2626", bg: "#fef2f2", text: "#991b1b" },
@@ -90,18 +90,32 @@
             "Indeks Kinerja Ormas": { border: "#ea580c", bg: "#fff7ed", text: "#9a3412" }
         };
 
-        // Sampel data dari CSV yang sudah Anda rapikan
-        const database = [
-            { "index": "Indeks Demokrasi", "task": "Pendidikan Politik Bagi Masyarakat", "month": "Januari", "date": "27/01/2026" },
-            { "index": "Indeks Demokrasi", "task": "Monitoring Keberadaan Partai Politik", "month": "Januari", "date": "20/01/2026" },
-            { "index": "Indeks Aktualisasi Pancasila", "task": "FGD Idwasbang I", "month": "Januari", "date": "29/01/2026" },
-            { "index": "Indeks Kewaspadaan Nasional", "task": "Rapat FORKOPIMDA", "month": "Januari", "date": "16/01/2026" },
-            { "index": "Indeks Demokrasi", "task": "Pendidikan Politik Bagi Masyarakat", "month": "Februari", "date": "03/02/2026" },
-            { "index": "Indeks Harmoni Indonesia", "task": "FGD Penguatan Ketahanan Ekososbud", "month": "Februari", "date": "18/02/2026" }
-            // Tambahkan data lainnya sesuai format
-        ];
+        const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-        document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        // Inisialisasi Website
+        window.onload = function() {
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            // Render Tab Bulan
+            const tabContainer = document.getElementById('month-tabs');
+            months.forEach(m => {
+                const btn = document.createElement('button');
+                btn.className = "month-tab flex-1 py-4 text-[11px] font-bold uppercase hover:bg-white transition-all text-gray-500 border-r border-gray-200 last:border-0";
+                btn.innerText = m.substring(0, 3);
+                btn.onclick = (e) => filterByMonth(m, e.target);
+                tabContainer.appendChild(btn);
+            });
+
+            // Ambil Data dari Google Sheets
+            Papa.parse(SHEET_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    database = results.data;
+                    document.querySelector('#welcome-msg p').innerText = "Data berhasil dimuat. Pilih periode bulan di atas.";
+                }
+            });
+        };
 
         function filterByMonth(monthName, element) {
             document.querySelectorAll('.month-tab').forEach(t => t.classList.remove('nav-active'));
@@ -114,16 +128,18 @@
             const container = document.getElementById('table-container');
             container.innerHTML = '';
 
-            const filtered = database.filter(d => d.month === monthName)
-                                     .sort((a,b) => a.date.localeCompare(b.date));
+            // Filter & Sort
+            const filtered = database.filter(d => d["Bulan"] === monthName)
+                                     .sort((a,b) => a["Tanggal (DD/MM/YYYY)"].localeCompare(b["Tanggal (DD/MM/YYYY)"]));
 
             if (filtered.length === 0) {
-                container.innerHTML = `<div class="text-center py-24 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 text-gray-300 italic font-serif text-lg">Belum Ada Agenda Terdaftar</div>`;
+                container.innerHTML = `<div class="text-center py-24 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 text-gray-300 italic font-serif text-lg">Belum Ada Agenda Terdaftar di Sheets</div>`;
                 return;
             }
 
+            // Grouping by Indeks Kinerja
             const grouped = filtered.reduce((acc, obj) => {
-                const key = obj.index;
+                const key = obj["Indeks Kinerja"];
                 if (!acc[key]) acc[key] = [];
                 acc[key].push(obj);
                 return acc;
@@ -131,7 +147,6 @@
 
             for (const [title, items] of Object.entries(grouped)) {
                 const colors = colorMap[title] || { border: "#64748b", bg: "#f8fafc", text: "#1e293b" };
-                
                 const section = document.createElement('div');
                 section.innerHTML = `
                     <div class="flex items-center mb-5">
@@ -150,10 +165,12 @@
                             <tbody class="text-sm text-gray-700 bg-white">
                                 ${items.map(i => `
                                     <tr class="table-row border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-                                        <td class="col-tanggal p-4 font-bold border-r border-gray-50 text-blue-900">${i.date}</td>
-                                        <td class="col-kegiatan p-4 font-medium leading-relaxed">${i.task}</td>
+                                        <td class="col-tanggal p-4 font-bold border-r border-gray-50 text-blue-900">${i["Tanggal (DD/MM/YYYY)"]}</td>
+                                        <td class="col-kegiatan p-4 font-medium leading-relaxed">${i["Kegiatan"]}</td>
                                         <td class="col-status p-4">
-                                            <span class="bg-gray-100 text-gray-400 px-3 py-1 rounded-full text-[10px] font-bold">TERJADWAL</span>
+                                            <span class="px-3 py-1 rounded-full text-[10px] font-bold ${i["Status"] === 'SELESAI' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}">
+                                                ${i["Status"] || 'TERJADWAL'}
+                                            </span>
                                         </td>
                                     </tr>
                                 `).join('')}
