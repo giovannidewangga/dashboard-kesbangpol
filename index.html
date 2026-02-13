@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Jadwal Kesbangpol 2026</title>
+    <title>Jadwal Kesbangpol 2026 - Per Bulan</title>
     <style>
         :root {
             --primary: #1a5f7a;
@@ -13,14 +13,24 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: auto; }
         header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
-        .controls { margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
         
-        .card { background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; border-left: 6px solid var(--accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .indeks { font-size: 0.8em; font-weight: bold; color: var(--primary); text-transform: uppercase; }
-        .kegiatan { font-size: 1.2em; margin: 8px 0; font-weight: bold; }
-        .info { display: flex; gap: 15px; font-size: 0.9em; color: #666; }
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; background: #e3f2fd; color: #1976d2; }
+        /* Styling Header Bulan */
+        .month-header { 
+            background: var(--accent); 
+            color: white; 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            margin: 30px 0 15px 0; 
+            font-size: 1.4em; 
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card { background: white; padding: 20px; margin-bottom: 12px; border-radius: 10px; border-left: 6px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .indeks { font-size: 0.75em; font-weight: bold; color: #666; text-transform: uppercase; }
+        .kegiatan { font-size: 1.1em; margin: 5px 0; font-weight: bold; color: #222; }
+        .info { display: flex; gap: 15px; font-size: 0.85em; color: #444; }
+        .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; background: #e3f2fd; color: #1976d2; }
         .loading { text-align: center; padding: 50px; color: #888; }
     </style>
 </head>
@@ -28,22 +38,19 @@
 
 <div class="container">
     <header>
-        <h1>Monitoring Jadwal Kesbangpol 2026</h1>
-        <p>Seluruh Jadwal Kegiatan</p>
+        <h1>Jadwal Kegiatan Kesbangpol 2026</h1>
+        <p>Monitoring Bulanan</p>
     </header>
 
-    <div class="controls">
-        <input type="text" id="search" placeholder="Cari nama kegiatan...">
-    </div>
-
     <div id="dashboard-list">
-        <div class="loading">Memuat database...</div>
+        <div class="loading">Menyusun jadwal per bulan...</div>
     </div>
 </div>
 
 <script>
-    // Link CSV Baru (Sheet2)
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSrJOaNCI6obb0fP8nfVflC-On_sygIjRpH-MY0oO-Nja8J9tVypyAgm-FSBLk_RHDr-Y7_TKu5AvI/pub?gid=1116757037&single=true&output=csv';
+
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
     async function loadData() {
         try {
@@ -52,50 +59,55 @@
             const rows = data.split(/\r?\n/).slice(1); 
             const dashboardList = document.getElementById('dashboard-list');
             
-            let allItems = [];
+            let groupedData = {};
 
             rows.forEach(row => {
-                // Menggunakan regex untuk split agar koma di dalam teks tidak merusak kolom
                 const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || row.split(',');
                 
                 if (cols.length >= 4) {
                     const clean = (str) => str ? str.replace(/"/g, '') : '';
                     
-                    allItems.push({
+                    const startStr = clean(cols[2]);
+                    const [d, m, y] = startStr.split('/');
+                    const monthIndex = parseInt(m) - 1;
+                    const groupKey = `${monthNames[monthIndex]} ${y}`;
+
+                    if (!groupedData[groupKey]) {
+                        groupedData[groupKey] = [];
+                    }
+
+                    groupedData[groupKey].push({
                         indeks: clean(cols[0]),
                         kegiatan: clean(cols[1]),
-                        start: clean(cols[2]),
-                        end: clean(cols[3]),
+                        start: startStr,
+                        end: clean(cols[2] === cols[3] ? cols[2] : cols[3]), // Jika sama, tampilkan satu saja nanti
                         status: clean(cols[4]) || '-',
                         keterangan: clean(cols[5]) || ''
                     });
                 }
             });
 
-            function displayData(items) {
-                dashboardList.innerHTML = '';
-                items.forEach(item => {
+            // Render ke HTML
+            dashboardList.innerHTML = '';
+            for (const month in groupedData) {
+                // Tambah Header Bulan
+                dashboardList.innerHTML += `<div class="month-header">${month}</div>`;
+
+                // Tambah Card Kegiatan di bulan tersebut
+                groupedData[month].forEach(item => {
                     dashboardList.innerHTML += `
                         <div class="card">
                             <div class="indeks">${item.indeks}</div>
                             <div class="kegiatan">${item.kegiatan}</div>
                             <div class="info">
-                                <span>📅 ${item.start} s/d ${item.end}</span>
+                                <span>📅 ${item.start} ${item.start !== item.end ? 's/d ' + item.end : ''}</span>
                                 <span class="status-badge">${item.status}</span>
                             </div>
-                            ${item.keterangan ? `<div style="margin-top:10px; font-size:0.85em; color:#888;">ℹ️ ${item.keterangan}</div>` : ''}
+                            ${item.keterangan ? `<div style="margin-top:8px; font-size:0.85em; color:#777;">ℹ️ ${item.keterangan}</div>` : ''}
                         </div>
                     `;
                 });
             }
-
-            document.getElementById('search').addEventListener('input', (e) => {
-                const val = e.target.value.toLowerCase();
-                const filtered = allItems.filter(i => i.kegiatan.toLowerCase().includes(val));
-                displayData(filtered);
-            });
-
-            displayData(allItems);
 
         } catch (error) {
             document.getElementById('dashboard-list').innerHTML = 'Gagal memuat data.';
