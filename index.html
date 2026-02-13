@@ -4,28 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalender Kegiatan Kesbangpol 2026</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+    
     <style>
         :root {
             --bg: #f8f9fa;
             --text: #333;
+            --primary: #1a5f7a;
+            --secondary: #e3f2fd;
+            --accent: #00af91;
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
         .container { max-width: 1200px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
 
         /* Header & Navigasi */
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; flex-wrap: wrap; gap: 10px; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
         h1 { margin: 0; font-size: 1.5rem; color: #1a5f7a; }
+        
         .nav-controls { display: flex; align-items: center; gap: 10px; }
         .nav-btn { background: #1a5f7a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
         .nav-btn:hover { background: #134b61; }
         .current-month { font-size: 1.2rem; font-weight: bold; min-width: 180px; text-align: center; }
+
+        /* Tombol Refresh */
+        .refresh-btn { 
+            background: white; border: 2px solid #1a5f7a; color: #1a5f7a; 
+            padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            display: flex; align-items: center; gap: 5px; transition: all 0.2s;
+        }
+        .refresh-btn:hover { background: #e3f2fd; }
+        .refresh-btn:active { transform: scale(0.95); }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
         /* Legenda Warna */
         .legend-container { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; font-size: 0.8rem; justify-content: center; }
         .legend-item { display: flex; align-items: center; gap: 5px; }
         .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
 
-        /* --- KALENDER GRID SYSTEM (ANTI OVERLAP) --- */
+        /* --- KALENDER GRID SYSTEM --- */
         .calendar-grid { 
             display: grid; 
             grid-template-columns: repeat(7, 1fr); 
@@ -44,13 +62,13 @@
             background: white; 
             border-right: 1px solid #eee; 
             border-bottom: 1px solid #eee; 
-            min-height: 110px; /* Tinggi Minimal Tetap */
+            min-height: 110px; 
             padding: 8px; 
             cursor: pointer; 
             transition: background 0.2s;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* KUNCI: Mencegah konten keluar kotak */
+            overflow: hidden; 
         }
         .day-cell:hover { background: #f9fcff; }
         .day-cell.today { background: #fffde7; }
@@ -64,7 +82,7 @@
             content: 'HARI INI'; font-size: 0.6em; background: #ffc107; color: #000; padding: 2px 5px; border-radius: 4px;
         }
 
-        /* --- EVENT MARKER (ANTI OVERLAP + WARNA) --- */
+        /* Event Marker */
         .event-marker { 
             font-size: 0.75rem; 
             padding: 3px 6px; 
@@ -72,14 +90,11 @@
             margin-bottom: 3px; 
             border-left-width: 4px;
             border-left-style: solid;
-            
-            /* CSS PENTING UNTUK MENCEGAH OVERLAP */
-            white-space: nowrap;       /* Jangan ganti baris */
-            overflow: hidden;          /* Sembunyikan teks yg kepanjangan */
-            text-overflow: ellipsis;   /* Ganti sisa teks dengan '...' */
-            max-width: 100%;           /* Lebar maksimal 100% dari kotak */
-            display: block;            /* Pastikan elemen blok */
-            cursor: pointer;
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            max-width: 100%; 
+            display: block;
         }
         
         .more-events { 
@@ -106,9 +121,11 @@
         .badge-terjadwal { background: #bbdefb; color: #0d47a1; }
         .badge-selesai { background: #c8e6c9; color: #1b5e20; }
 
-        #loading { text-align: center; padding: 50px; display: none; }
+        #loading { text-align: center; padding: 20px; display: none; color: #666; font-style: italic; }
 
         @media (max-width: 768px) {
+            header { flex-direction: column; align-items: flex-start; }
+            .nav-controls { width: 100%; justify-content: space-between; margin-top: 10px; }
             .day-name { font-size: 0.7rem; }
             .day-cell { min-height: 80px; }
             .event-marker { font-size: 0.65rem; }
@@ -119,7 +136,13 @@
 
 <div class="container">
     <header>
-        <h1>📅 Agenda Kesbangpol</h1>
+        <div class="header-left">
+            <h1>📅 Agenda Kesbangpol</h1>
+            <button class="refresh-btn" onclick="loadData()" title="Ambil data terbaru">
+                <span id="refresh-icon">↻</span> Perbaharui Data
+            </button>
+        </div>
+        
         <div class="nav-controls">
             <button class="nav-btn" onclick="changeMonth(-1)">❮</button>
             <span class="current-month" id="month-display">Memuat...</span>
@@ -136,7 +159,7 @@
         <div class="legend-item"><div class="legend-dot" style="background:#616161;"></div> Lainnya</div>
     </div>
 
-    <div id="loading">Sedang mengambil data terbaru...</div>
+    <div id="loading">Mengambil data terbaru dari server...</div>
 
     <div class="calendar-grid" id="calendar">
         <div class="day-name">Minggu</div>
@@ -158,12 +181,12 @@
 </div>
 
 <script>
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSrJOaNCI6obb0fP8nfVflC-On_sygIjRpH-MY0oO-Nja8J9tVypyAgm-FSBLk_RHDr-Y7_TKu5AvI/pub?gid=1116757037&single=true&output=csv';
+    // URL Dasar (Tanpa Timestamp)
+    const baseUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSrJOaNCI6obb0fP8nfVflC-On_sygIjRpH-MY0oO-Nja8J9tVypyAgm-FSBLk_RHDr-Y7_TKu5AvI/pub?gid=1116757037&single=true&output=csv';
 
     let allEvents = [];
     let currentDisplayDate = new Date(); 
 
-    // --- FUNGSI WARNA BERDASARKAN INDEKS ---
     function getColorByIndex(indeks) {
         const text = indeks ? indeks.toLowerCase() : '';
         if (text.includes('demokrasi')) return { bg: '#e3f2fd', border: '#1565c0', text: '#0d47a1' };
@@ -189,9 +212,17 @@
     }
 
     async function loadData() {
+        // Tampilkan Efek Loading pada Tombol & Layar
+        const refreshIcon = document.getElementById('refresh-icon');
+        refreshIcon.classList.add('spin');
         document.getElementById('loading').style.display = 'block';
+
         try {
-            const response = await fetch(csvUrl);
+            // TRIK: Tambahkan timestamp unik setiap kali fungsi ini dipanggil
+            // Ini memaksa browser mengabaikan cache lama dan meminta data baru
+            const uniqueUrl = baseUrl + '&t=' + Date.now();
+
+            const response = await fetch(uniqueUrl);
             const data = await response.text();
             const rows = data.split(/\r?\n/).slice(1);
             
@@ -228,11 +259,14 @@
             });
 
             renderCalendar();
-            document.getElementById('loading').style.display = 'none';
-
+            
         } catch (error) {
             console.error(error);
-            document.getElementById('loading').innerText = 'Gagal memuat data.';
+            alert('Gagal mengambil data terbaru. Coba lagi.');
+        } finally {
+            // Matikan Efek Loading
+            document.getElementById('loading').style.display = 'none';
+            refreshIcon.classList.remove('spin');
         }
     }
 
@@ -276,24 +310,20 @@
 
             cell.innerHTML = `<div class="date-number">${day}</div>`;
 
-            // Limit tampilan maksimal 2 baris
             const maxVisible = 2;
             dayEvents.slice(0, maxVisible).forEach(ev => {
                 const marker = document.createElement('div');
                 marker.className = 'event-marker';
                 
-                // Ambil warna dinamis berdasarkan indeks
                 const colors = getColorByIndex(ev.indeks);
                 marker.style.background = colors.bg;
                 marker.style.color = colors.text;
                 marker.style.borderLeftColor = colors.border;
                 
-                // Teks otomatis terpotong (ellipsis) karena CSS event-marker
                 marker.innerText = ev.kegiatan;
                 cell.appendChild(marker);
             });
 
-            // Tampilkan sisa kegiatan
             if (dayEvents.length > maxVisible) {
                 const more = document.createElement('div');
                 more.className = 'more-events';
