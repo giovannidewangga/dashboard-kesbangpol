@@ -3,114 +3,353 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jadwal Kesbangpol 2026 - Per Bulan</title>
+    <title>Kalender Kegiatan Kesbangpol 2026</title>
     <style>
         :root {
-            --primary: #1a5f7a;
-            --accent: #00af91;
-            --bg: #f0f2f5;
+            --bg: #f8f9fa;
+            --text: #333;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; }
-        header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
-        
-        /* Styling Header Bulan */
-        .month-header { 
-            background: var(--accent); 
-            color: white; 
-            padding: 10px 20px; 
-            border-radius: 8px; 
-            margin: 30px 0 15px 0; 
-            font-size: 1.4em; 
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
+        .container { max-width: 1200px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
+
+        /* Header & Navigasi */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; flex-wrap: wrap; gap: 10px; }
+        h1 { margin: 0; font-size: 1.5rem; color: #1a5f7a; }
+        .nav-controls { display: flex; align-items: center; gap: 10px; }
+        .nav-btn { background: #1a5f7a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+        .nav-btn:hover { background: #134b61; }
+        .current-month { font-size: 1.2rem; font-weight: bold; min-width: 180px; text-align: center; }
+
+        /* Legenda Warna */
+        .legend-container { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; font-size: 0.8rem; justify-content: center; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+        /* --- KALENDER GRID SYSTEM (ANTI OVERLAP) --- */
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 8px; 
+            border-top: 1px solid #eee;
+            border-left: 1px solid #eee;
         }
 
-        .card { background: white; padding: 20px; margin-bottom: 12px; border-radius: 10px; border-left: 6px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .indeks { font-size: 0.75em; font-weight: bold; color: #666; text-transform: uppercase; }
-        .kegiatan { font-size: 1.1em; margin: 5px 0; font-weight: bold; color: #222; }
-        .info { display: flex; gap: 15px; font-size: 0.85em; color: #444; }
-        .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; background: #e3f2fd; color: #1976d2; }
-        .loading { text-align: center; padding: 50px; color: #888; }
+        .day-name { 
+            font-weight: bold; text-align: center; color: #1a5f7a; 
+            padding: 10px 0; text-transform: uppercase; font-size: 0.85rem; 
+            background: #f1f5f9; border-bottom: 1px solid #ddd; border-right: 1px solid #eee;
+        }
+        
+        .day-cell { 
+            background: white; 
+            border-right: 1px solid #eee; 
+            border-bottom: 1px solid #eee; 
+            min-height: 110px; /* Tinggi Minimal Tetap */
+            padding: 8px; 
+            cursor: pointer; 
+            transition: background 0.2s;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* KUNCI: Mencegah konten keluar kotak */
+        }
+        .day-cell:hover { background: #f9fcff; }
+        .day-cell.today { background: #fffde7; }
+        .day-cell.other-month { background: #fcfcfc; color: #ddd; pointer-events: none; }
+        
+        .date-number { 
+            font-weight: bold; font-size: 1rem; margin-bottom: 5px; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .today .date-number::after {
+            content: 'HARI INI'; font-size: 0.6em; background: #ffc107; color: #000; padding: 2px 5px; border-radius: 4px;
+        }
+
+        /* --- EVENT MARKER (ANTI OVERLAP + WARNA) --- */
+        .event-marker { 
+            font-size: 0.75rem; 
+            padding: 3px 6px; 
+            border-radius: 4px; 
+            margin-bottom: 3px; 
+            border-left-width: 4px;
+            border-left-style: solid;
+            
+            /* CSS PENTING UNTUK MENCEGAH OVERLAP */
+            white-space: nowrap;       /* Jangan ganti baris */
+            overflow: hidden;          /* Sembunyikan teks yg kepanjangan */
+            text-overflow: ellipsis;   /* Ganti sisa teks dengan '...' */
+            max-width: 100%;           /* Lebar maksimal 100% dari kotak */
+            display: block;            /* Pastikan elemen blok */
+            cursor: pointer;
+        }
+        
+        .more-events { 
+            font-size: 0.7rem; color: #666; text-align: center; 
+            background: #eee; border-radius: 10px; padding: 2px; margin-top: auto; 
+        }
+
+        /* Modal Pop-up */
+        .modal-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; 
+        }
+        .modal-content { 
+            background: white; width: 90%; max-width: 500px; border-radius: 12px; 
+            padding: 25px; box-shadow: 0 5px 30px rgba(0,0,0,0.3); position: relative; max-height: 80vh; overflow-y: auto;
+        }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .modal-date { font-size: 1.2rem; font-weight: bold; color: #1a5f7a; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        
+        .modal-item { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left-width: 5px; border-left-style: solid; }
+        .modal-item h3 { margin: 0 0 5px 0; font-size: 1rem; }
+        .modal-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; background: #e0e0e0; color: #333; margin-top: 5px; }
+        .badge-rutin { background: #e1bee7; color: #4a148c; }
+        .badge-terjadwal { background: #bbdefb; color: #0d47a1; }
+        .badge-selesai { background: #c8e6c9; color: #1b5e20; }
+
+        #loading { text-align: center; padding: 50px; display: none; }
+
+        @media (max-width: 768px) {
+            .day-name { font-size: 0.7rem; }
+            .day-cell { min-height: 80px; }
+            .event-marker { font-size: 0.65rem; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Jadwal Kegiatan Kesbangpol 2026</h1>
-        <p>Monitoring Bulanan</p>
+        <h1>📅 Agenda Kesbangpol</h1>
+        <div class="nav-controls">
+            <button class="nav-btn" onclick="changeMonth(-1)">❮</button>
+            <span class="current-month" id="month-display">Memuat...</span>
+            <button class="nav-btn" onclick="changeMonth(1)">❯</button>
+        </div>
     </header>
 
-    <div id="dashboard-list">
-        <div class="loading">Menyusun jadwal per bulan...</div>
+    <div class="legend-container">
+        <div class="legend-item"><div class="legend-dot" style="background:#1565c0;"></div> Demokrasi</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#c62828;"></div> Kewaspadaan</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2e7d32;"></div> Harmoni</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6a1b9a;"></div> Ormas</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef6c00;"></div> Pancasila</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#616161;"></div> Lainnya</div>
+    </div>
+
+    <div id="loading">Sedang mengambil data terbaru...</div>
+
+    <div class="calendar-grid" id="calendar">
+        <div class="day-name">Minggu</div>
+        <div class="day-name">Senin</div>
+        <div class="day-name">Selasa</div>
+        <div class="day-name">Rabu</div>
+        <div class="day-name">Kamis</div>
+        <div class="day-name">Jumat</div>
+        <div class="day-name">Sabtu</div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <div class="modal-date" id="modal-title">Detail Tanggal</div>
+        <div id="modal-body"></div>
     </div>
 </div>
 
 <script>
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSrJOaNCI6obb0fP8nfVflC-On_sygIjRpH-MY0oO-Nja8J9tVypyAgm-FSBLk_RHDr-Y7_TKu5AvI/pub?gid=1116757037&single=true&output=csv';
 
-    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    let allEvents = [];
+    let currentDisplayDate = new Date(); 
+
+    // --- FUNGSI WARNA BERDASARKAN INDEKS ---
+    function getColorByIndex(indeks) {
+        const text = indeks ? indeks.toLowerCase() : '';
+        if (text.includes('demokrasi')) return { bg: '#e3f2fd', border: '#1565c0', text: '#0d47a1' };
+        if (text.includes('kewaspadaan')) return { bg: '#ffebee', border: '#c62828', text: '#b71c1c' };
+        if (text.includes('harmoni')) return { bg: '#e8f5e9', border: '#2e7d32', text: '#1b5e20' };
+        if (text.includes('ormas')) return { bg: '#f3e5f5', border: '#7b1fa2', text: '#4a148c' };
+        if (text.includes('pancasila') || text.includes('ekonomi')) return { bg: '#fff3e0', border: '#ef6c00', text: '#e65100' };
+        return { bg: '#f5f5f5', border: '#757575', text: '#616161' };
+    }
+
+    function parseCSVRow(str) {
+        const result = [];
+        let current = '';
+        let inQuote = false;
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '"') { inQuote = !inQuote; } 
+            else if (char === ',' && !inQuote) { result.push(current); current = ''; } 
+            else { current += char; }
+        }
+        result.push(current);
+        return result;
+    }
 
     async function loadData() {
+        document.getElementById('loading').style.display = 'block';
         try {
             const response = await fetch(csvUrl);
             const data = await response.text();
-            const rows = data.split(/\r?\n/).slice(1); 
-            const dashboardList = document.getElementById('dashboard-list');
+            const rows = data.split(/\r?\n/).slice(1);
             
-            let groupedData = {};
+            allEvents = [];
 
             rows.forEach(row => {
-                const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || row.split(',');
-                
-                if (cols.length >= 4) {
-                    const clean = (str) => str ? str.replace(/"/g, '') : '';
-                    
-                    const startStr = clean(cols[2]);
-                    const [d, m, y] = startStr.split('/');
-                    const monthIndex = parseInt(m) - 1;
-                    const groupKey = `${monthNames[monthIndex]} ${y}`;
+                if (!row.trim()) return;
+                const cols = parseCSVRow(row);
+                if (cols.length < 6) return;
 
-                    if (!groupedData[groupKey]) {
-                        groupedData[groupKey] = [];
-                    }
+                const clean = (str) => str ? str.replace(/^"|"$/g, '').trim() : '';
 
-                    groupedData[groupKey].push({
+                const parseDate = (dateStr) => {
+                    if (!dateStr || !dateStr.includes('/')) return null;
+                    const [d, m, y] = dateStr.split('/');
+                    return new Date(y, m - 1, d);
+                };
+
+                const startObj = parseDate(clean(cols[3]));
+                const endObj = parseDate(clean(cols[4]));
+
+                if (startObj && endObj) {
+                    allEvents.push({
                         indeks: clean(cols[0]),
                         kegiatan: clean(cols[1]),
-                        start: startStr,
-                        end: clean(cols[2] === cols[3] ? cols[2] : cols[3]), // Jika sama, tampilkan satu saja nanti
-                        status: clean(cols[4]) || '-',
-                        keterangan: clean(cols[5]) || ''
+                        start: startObj,
+                        end: endObj,
+                        startStr: clean(cols[3]),
+                        endStr: clean(cols[4]),
+                        status: clean(cols[5]),
+                        keterangan: clean(cols[6])
                     });
                 }
             });
 
-            // Render ke HTML
-            dashboardList.innerHTML = '';
-            for (const month in groupedData) {
-                // Tambah Header Bulan
-                dashboardList.innerHTML += `<div class="month-header">${month}</div>`;
-
-                // Tambah Card Kegiatan di bulan tersebut
-                groupedData[month].forEach(item => {
-                    dashboardList.innerHTML += `
-                        <div class="card">
-                            <div class="indeks">${item.indeks}</div>
-                            <div class="kegiatan">${item.kegiatan}</div>
-                            <div class="info">
-                                <span>📅 ${item.start} ${item.start !== item.end ? 's/d ' + item.end : ''}</span>
-                                <span class="status-badge">${item.status}</span>
-                            </div>
-                            ${item.keterangan ? `<div style="margin-top:8px; font-size:0.85em; color:#777;">ℹ️ ${item.keterangan}</div>` : ''}
-                        </div>
-                    `;
-                });
-            }
+            renderCalendar();
+            document.getElementById('loading').style.display = 'none';
 
         } catch (error) {
-            document.getElementById('dashboard-list').innerHTML = 'Gagal memuat data.';
+            console.error(error);
+            document.getElementById('loading').innerText = 'Gagal memuat data.';
+        }
+    }
+
+    function renderCalendar() {
+        const year = currentDisplayDate.getFullYear();
+        const month = currentDisplayDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        document.getElementById('month-display').innerText = `${monthNames[month]} ${year}`;
+
+        const calendarEl = document.getElementById('calendar');
+        while (calendarEl.children.length > 7) {
+            calendarEl.removeChild(calendarEl.lastChild);
+        }
+
+        const startDayIndex = firstDay.getDay(); 
+        for (let i = 0; i < startDayIndex; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'day-cell other-month';
+            calendarEl.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const cellDate = new Date(year, month, day);
+            const cell = document.createElement('div');
+            cell.className = 'day-cell';
+            
+            const today = new Date();
+            if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                cell.classList.add('today');
+            }
+
+            const dayEvents = allEvents.filter(ev => {
+                const checkTime = cellDate.getTime();
+                const startTime = ev.start.setHours(0,0,0,0);
+                const endTime = ev.end.setHours(0,0,0,0);
+                return checkTime >= startTime && checkTime <= endTime;
+            });
+
+            cell.innerHTML = `<div class="date-number">${day}</div>`;
+
+            // Limit tampilan maksimal 2 baris
+            const maxVisible = 2;
+            dayEvents.slice(0, maxVisible).forEach(ev => {
+                const marker = document.createElement('div');
+                marker.className = 'event-marker';
+                
+                // Ambil warna dinamis berdasarkan indeks
+                const colors = getColorByIndex(ev.indeks);
+                marker.style.background = colors.bg;
+                marker.style.color = colors.text;
+                marker.style.borderLeftColor = colors.border;
+                
+                // Teks otomatis terpotong (ellipsis) karena CSS event-marker
+                marker.innerText = ev.kegiatan;
+                cell.appendChild(marker);
+            });
+
+            // Tampilkan sisa kegiatan
+            if (dayEvents.length > maxVisible) {
+                const more = document.createElement('div');
+                more.className = 'more-events';
+                more.innerText = `+ ${dayEvents.length - maxVisible} lainnya`;
+                cell.appendChild(more);
+            }
+
+            cell.onclick = () => openModal(day, monthNames[month], year, dayEvents);
+            calendarEl.appendChild(cell);
+        }
+    }
+
+    function changeMonth(step) {
+        currentDisplayDate.setMonth(currentDisplayDate.getMonth() + step);
+        renderCalendar();
+    }
+
+    function openModal(day, monthName, year, events) {
+        const modal = document.getElementById('modal');
+        const title = document.getElementById('modal-title');
+        const body = document.getElementById('modal-body');
+
+        title.innerText = `Kegiatan: ${day} ${monthName} ${year}`;
+        body.innerHTML = '';
+
+        if (events.length === 0) {
+            body.innerHTML = '<p style="text-align:center; color:#666;">Tidak ada kegiatan pada tanggal ini.</p>';
+        } else {
+            events.forEach(ev => {
+                const colors = getColorByIndex(ev.indeks);
+                let badgeClass = 'badge-terjadwal';
+                if (ev.status.toLowerCase().includes('selesai')) badgeClass = 'badge-selesai';
+                if (ev.status.toLowerCase().includes('rutin')) badgeClass = 'badge-rutin';
+
+                body.innerHTML += `
+                    <div class="modal-item" style="border-left-color: ${colors.border};">
+                        <div style="font-size:0.8rem; font-weight:bold; color:${colors.border};">${ev.indeks}</div>
+                        <h3>${ev.kegiatan}</h3>
+                        <div style="font-size:0.9rem; color:#555;">📅 ${ev.startStr} - ${ev.endStr}</div>
+                        <span class="modal-badge ${badgeClass}">${ev.status}</span>
+                        ${ev.keterangan ? `<div style="margin-top:5px; font-size:0.85rem; color:#777; font-style:italic;">ℹ️ ${ev.keterangan}</div>` : ''}
+                    </div>
+                `;
+            });
+        }
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('modal');
+        if (event.target == modal) {
+            modal.style.display = "none";
         }
     }
 
