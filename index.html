@@ -10,25 +10,18 @@
             --accent: #00af91;
             --bg: #f0f2f5;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: auto; }
-        header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
+        .controls { margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
         
-        /* Filter Styles */
-        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        input, select { padding: 10px; border-radius: 8px; border: 1px solid #ddd; flex: 1; min-width: 200px; }
-
-        /* Card Styles */
-        .card { background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; border-left: 6px solid var(--accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .indeks { font-size: 0.8em; font-weight: bold; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; }
-        .kegiatan { font-size: 1.2em; margin: 8px 0; color: #222; }
-        .info { display: flex; gap: 15px; font-size: 0.9em; color: #666; flex-wrap: wrap; }
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; }
-        .terjadwal { background: #e3f2fd; color: #1976d2; }
-        .rutin { background: #f3e5f5; color: #7b1fa2; }
-        
-        .loading { text-align: center; padding: 50px; font-style: italic; color: #888; }
+        .card { background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; border-left: 6px solid var(--accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .indeks { font-size: 0.8em; font-weight: bold; color: var(--primary); text-transform: uppercase; }
+        .kegiatan { font-size: 1.2em; margin: 8px 0; font-weight: bold; }
+        .info { display: flex; gap: 15px; font-size: 0.9em; color: #666; }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; background: #e3f2fd; color: #1976d2; }
+        .loading { text-align: center; padding: 50px; color: #888; }
     </style>
 </head>
 <body>
@@ -36,80 +29,59 @@
 <div class="container">
     <header>
         <h1>Monitoring Jadwal Kesbangpol 2026</h1>
-        <p id="today-date"></p>
+        <p>Seluruh Jadwal Kegiatan</p>
     </header>
 
     <div class="controls">
-        <input type="text" id="search" placeholder="Cari kegiatan atau indeks...">
+        <input type="text" id="search" placeholder="Cari nama kegiatan...">
     </div>
 
     <div id="dashboard-list">
-        <div class="loading">Menghubungkan ke Google Sheets...</div>
+        <div class="loading">Memuat database...</div>
     </div>
 </div>
 
 <script>
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSrJOaNCI6obb0fP8nfVflC-On_sygIjRpH-MY0oO-Nja8J9tVypyAgm-FSBLk_RHDr-Y7_TKu5AvI/pub?output=csv';
-
-    // Set Tanggal Hari Ini
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('today-date').innerText = new Date().toLocaleDateString('id-ID', options);
+    // Link CSV Baru (Sheet2)
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSrJOaNCI6obb0fP8nfVflC-On_sygIjRpH-MY0oO-Nja8J9tVypyAgm-FSBLk_RHDr-Y7_TKu5AvI/pub?gid=1116757037&single=true&output=csv';
 
     async function loadData() {
         try {
             const response = await fetch(csvUrl);
             const data = await response.text();
-            
-            // Regex untuk handle CSV yang mungkin mengandung koma di dalam teks (quotation marks)
             const rows = data.split(/\r?\n/).slice(1); 
             const dashboardList = document.getElementById('dashboard-list');
             
             let allItems = [];
 
             rows.forEach(row => {
-                // Split sederhana, jika data Anda tidak mengandung koma di dalam nama kegiatan
-                const cols = row.split(','); 
-                if (cols.length < 5) return;
-
-                const item = {
-                    indeks: cols[0],
-                    kegiatan: cols[1],
-                    start: cols[2],
-                    end: cols[3],
-                    status: cols[4],
-                    keterangan: cols[5]
-                };
-
-                // Parsing Tanggal (DD/MM/YYYY)
-                const [d1, m1, y1] = item.start.split('/');
-                const [d2, m2, y2] = item.end.split('/');
-                const startDate = new Date(y1, m1 - 1, d1);
-                const endDate = new Date(y2, m2 - 1, d2);
-                const today = new Date();
-                today.setHours(0,0,0,0);
-
-                // Filter: Hanya tampilkan yang sedang berjalan atau akan datang
-                if (endDate >= today) {
-                    allItems.push(item);
+                // Menggunakan regex untuk split agar koma di dalam teks tidak merusak kolom
+                const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || row.split(',');
+                
+                if (cols.length >= 4) {
+                    const clean = (str) => str ? str.replace(/"/g, '') : '';
+                    
+                    allItems.push({
+                        indeks: clean(cols[0]),
+                        kegiatan: clean(cols[1]),
+                        start: clean(cols[2]),
+                        end: clean(cols[3]),
+                        status: clean(cols[4]) || '-',
+                        keterangan: clean(cols[5]) || ''
+                    });
                 }
             });
 
             function displayData(items) {
                 dashboardList.innerHTML = '';
-                if (items.length === 0) {
-                    dashboardList.innerHTML = '<div class="loading">Tidak ada kegiatan ditemukan.</div>';
-                    return;
-                }
-
                 items.forEach(item => {
-                    const statusClass = item.status.toLowerCase() === 'rutin' ? 'rutin' : 'terjadwal';
                     dashboardList.innerHTML += `
                         <div class="card">
                             <div class="indeks">${item.indeks}</div>
                             <div class="kegiatan">${item.kegiatan}</div>
                             <div class="info">
-                                <span>📅 ${item.start} - ${item.end}</span>
-                                <span class="status-badge ${statusClass}">${item.status}</span>
+                                <span>📅 ${item.start} s/d ${item.end}</span>
+                                <span class="status-badge">${item.status}</span>
                             </div>
                             ${item.keterangan ? `<div style="margin-top:10px; font-size:0.85em; color:#888;">ℹ️ ${item.keterangan}</div>` : ''}
                         </div>
@@ -117,20 +89,16 @@
                 });
             }
 
-            // Fungsi Search
             document.getElementById('search').addEventListener('input', (e) => {
                 const val = e.target.value.toLowerCase();
-                const filtered = allItems.filter(i => 
-                    i.kegiatan.toLowerCase().includes(val) || 
-                    i.indeks.toLowerCase().includes(val)
-                );
+                const filtered = allItems.filter(i => i.kegiatan.toLowerCase().includes(val));
                 displayData(filtered);
             });
 
             displayData(allItems);
 
         } catch (error) {
-            document.getElementById('dashboard-list').innerHTML = '<div class="loading">Gagal memuat data. Pastikan opsi "Publish to Web" di Sheets sudah aktif.</div>';
+            document.getElementById('dashboard-list').innerHTML = 'Gagal memuat data.';
         }
     }
 
